@@ -9,9 +9,9 @@ namespace json
         std::map<std::string, Var> _val;
     public:
         Object() = default;
-        Object(std::map<std::string, Var> m) : _val{std::move(m)} {}
-        Object(std::initializer_list<std::pair<const std::string, Var>> list) : _val{list} {}
-
+        Object(std::map<std::string, Var> m) : _val(std::move(m)) {}
+        Object(std::initializer_list<std::pair<const std::string, Var>> list)
+            : _val(list) {}
         bool isObject() const override { return true; }
         std::map<std::string, Var>& getObject() override { return _val; }
         const std::map<std::string, Var>& getObject() const override { return _val; }

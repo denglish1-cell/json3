@@ -83,7 +83,7 @@ namespace json
 
     inline std::ostream& operator<<(std::ostream& os, Var const& v)
     {
-        os << *v;
+        v->print(os);
         return os;
     }
 

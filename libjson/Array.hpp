@@ -9,8 +9,8 @@ namespace json
         std::vector<Var> _val;
     public:
         Array() = default;
-        Array(std::vector<Var> v) : _val{std::move(v)} {}
-        Array(std::initializer_list<Var> list) : _val{list} {}
+        Array(std::vector<Var> v) : _val(std::move(v)) {}
+        Array(std::initializer_list<Var> list) : _val(list) {}
 
         bool isArray() const override { return true; }
         std::vector<Var>& getArray() override { return _val; }

@@ -32,9 +32,13 @@ using namespace std::string_literals;
 
 // Load TodoList from data file
 TodoList loadData(std::string const& path) {
-  std::ifstream in(path);
-  if (!in) return {};   // first run: no file yet
-  return unmarshal(*parse(in));
+    std::ifstream in(path);
+
+    if (!in || in.peek() == std::ifstream::traits_type::eof()) {
+        return TodoList{};
+    }
+
+    return unmarshal(*parse(in));
 }
 
 
@@ -44,7 +48,6 @@ void saveData(std::string const& path, TodoList const& list) {
   if (!out) throw std::runtime_error("Cannot write " + path);
   out << marshal(list) << '\n';
 }
-
 
 // Test whether range contains specified value
 template<std::ranges::input_range R, typename V>
