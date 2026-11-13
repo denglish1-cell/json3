@@ -28,7 +28,6 @@ namespace
         map["done"]  = task.done;
         map["tags"]  = std::move(tags);
 
-        // Spec: use null when there is no completed value
         if (task.completed.has_value()) {
             map["completed"] = *task.completed;
         } else {
@@ -47,18 +46,18 @@ namespace
     }
 }
 
+
 json::Var marshal(TodoList const& list)
 {
+    json::Array tasks;
+    for (auto const& task : list.tasks) {
+        tasks.getArray().push_back(marshal_task(task));
+    }
+
     json::Object root;
     auto& map = root.getObject();
-
-    map["nextId"] = (double)list.nextId;
-    json::Array taskArray;
-    for (auto const& task : list.tasks)
-    {
-        taskArray.getArray().push_back(marshal_task(task));
-    }
-    map["tasks"] = std::move(taskArray);
+    map["nextId"] = static_cast<double>(list.nextId);
+    map["tasks"]  = std::move(tasks);
 
     return root;
 }
