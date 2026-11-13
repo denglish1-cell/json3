@@ -7,4 +7,4 @@ set(CMAKE_CXX_STANDARD 20)
 
 add_subdirectory(libjson)
 add_subdirectory(json_test)
- add_subdirectory(todo/todo)
+ add_subdirectory(todo)
