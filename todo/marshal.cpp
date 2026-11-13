@@ -7,23 +7,30 @@
 
 namespace
 {
+    // Helper: throw a MarshallError exception
+    void invalid(std::string const& message, json::Data const& where) {
+        std::ostringstream out;
+        out << message << " in " << where;
+        throw MarshalError(out.str());
+    }
+
     json::Var marshal_task(Task const& task)
     {
-        json::Object obj;
-        auto& map = obj.getObject();
-
-        map["id"] = (double)task.id;
-        map["title"] = task.title;
-        map["done"] = task.done;
-
         json::Array tags;
-        for (const auto& tag : task.tags) {
+        for (auto const& tag : task.tags) {
             tags.getArray().emplace_back(tag);
         }
-        map["tags"] = std::move(tags);
 
+        json::Object obj;
+        auto& map = obj.getObject();
+        map["id"]    = static_cast<double>(task.id);
+        map["title"] = task.title;
+        map["done"]  = task.done;
+        map["tags"]  = std::move(tags);
+
+        // Spec: use null when there is no completed value
         if (task.completed.has_value()) {
-            map["completed"] = task.completed.value();
+            map["completed"] = *task.completed;
         } else {
             map["completed"] = nullptr;
         }
@@ -42,8 +49,8 @@ namespace
 
 json::Var marshal(TodoList const& list)
 {
-    auto root = std::make_unique<json::Object>();
-    auto& map = root->getObject();
+    json::Object root;
+    auto& map = root.getObject();
 
     map["nextId"] = (double)list.nextId;
     json::Array taskArray;
@@ -53,7 +60,7 @@ json::Var marshal(TodoList const& list)
     }
     map["tasks"] = std::move(taskArray);
 
-    return root.release();
+    return root;
 }
 
 TodoList unmarshal(json::Data& data) {
@@ -116,9 +123,3 @@ TodoList unmarshal(json::Data& data) {
     return list;
 }
 
-// Helper: throw a MarshallError exception
-void invalid(std::string const& message, json::Data const& where) {
-    std::ostringstream out;
-    out << message << " in " << where;
-    throw MarshalError(out.str());
-}

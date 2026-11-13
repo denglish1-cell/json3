@@ -172,6 +172,7 @@ int main(int argc, char* argv[]) {
   }
   catch (std::runtime_error const& e) {
     std::cout << "Unmarshaling threw a std::runtime_error\n";
+    std::cout << e.what() << std::endl;
     return 0;
   }
 
