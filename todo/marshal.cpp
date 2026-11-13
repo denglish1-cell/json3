@@ -1,13 +1,11 @@
 #include "marshal.hpp"
 #include "parse.hpp"
 #include "json.hpp"
-
 #include <sstream>
-#include <string>
 
 namespace
 {
-    // Helper: throw a MarshallError exception
+    // Requirement: Throws MarshalError with the JSON context included in the message
     void invalid(std::string const& message, json::Data const& where) {
         std::ostringstream out;
         out << message << " in " << where;
@@ -16,20 +14,21 @@ namespace
 
     json::Var marshal_task(Task const& task)
     {
-        json::Array tags;
-        for (auto const& tag : task.tags) {
-            tags.getArray().emplace_back(tag);
-        }
-
         json::Object obj;
         auto& map = obj.getObject();
-        map["id"]    = static_cast<double>(task.id);
+
+        map["id"] = static_cast<double>(task.id);
         map["title"] = task.title;
-        map["done"]  = task.done;
-        map["tags"]  = std::move(tags);
+        map["done"] = task.done;
+
+        json::Array tags;
+        for (const auto& tag : task.tags) {
+            tags.getArray().push_back(tag);
+        }
+        map["tags"] = std::move(tags);
 
         if (task.completed.has_value()) {
-            map["completed"] = *task.completed;
+            map["completed"] = task.completed.value();
         } else {
             map["completed"] = nullptr;
         }
@@ -37,78 +36,65 @@ namespace
         return obj;
     }
 
-    const json::Var& get_field(const std::map<std::string, json::Var>& map, const std::string& key) {
-        const auto it = map.find(key);
-        if (it == map.end() || it->second->isNull()) {
-            throw MarshalError("Missing required field: " + key);
+    const json::Var& get_required_field(const std::map<std::string, json::Var>& m, const std::string& key, const json::Data& context) {
+        auto it = m.find(key);
+        if (it == m.end() || it->second->isNull()) {
+            invalid("Missing required field: " + key, context);
         }
         return it->second;
     }
 }
 
-
 json::Var marshal(TodoList const& list)
 {
-    json::Array tasks;
-    for (auto const& task : list.tasks) {
-        tasks.getArray().push_back(marshal_task(task));
-    }
-
     json::Object root;
     auto& map = root.getObject();
+
     map["nextId"] = static_cast<double>(list.nextId);
-    map["tasks"]  = std::move(tasks);
+
+    json::Array taskArray;
+    for (auto const& task : list.tasks) {
+        taskArray.getArray().push_back(marshal_task(task));
+    }
+    map["tasks"] = std::move(taskArray);
 
     return root;
 }
 
-TodoList unmarshal(json::Data& data) {
+TodoList unmarshal(json::Data const& data) {
     if (!data.isObject()) {
-        throw MarshalError("Root JSON must be an object");
+        invalid("Root JSON must be an object", data);
     }
 
-    std::map<std::string, json::Var> rootMap = data.getObject();
+    const auto& rootMap = data.getObject();
     TodoList list;
 
     // Unmarshal nextId
-    const auto& nextIdVar = get_field(rootMap, "nextId");
-    if (!nextIdVar->isNumber()) throw MarshalError("nextId must be a number");
+    const auto& nextIdVar = get_required_field(rootMap, "nextId", data);
+    if (!nextIdVar->isNumber()) invalid("nextId must be a number", data);
     list.nextId = static_cast<int>(nextIdVar->getNumber());
 
     // Unmarshal tasks array
-    const auto& tasksVar = get_field(rootMap, "tasks");
-    if (!tasksVar->isArray()) throw MarshalError("tasks must be an array");
+    const auto& tasksVar = get_required_field(rootMap, "tasks", data);
+    if (!tasksVar->isArray()) invalid("tasks must be an array", data);
 
     for (const auto& taskVar : tasksVar->getArray()) {
-        if (!taskVar->isObject()) throw MarshalError("Each task must be an object");
+        if (!taskVar->isObject()) invalid("Task entry must be an object", data);
         const auto& tMap = taskVar->getObject();
+        const json::Data& tData = *taskVar; // Context for errors
 
         Task t;
 
-        // id
-        const auto& idV = get_field(tMap, "id");
-        if (!idV->isNumber()) throw MarshalError("task id must be a number");
-        t.id = static_cast<int>(idV->getNumber());
+        t.id = static_cast<int>(get_required_field(tMap, "id", tData)->getNumber());
+        t.title = get_required_field(tMap, "title", tData)->getString();
+        t.done = get_required_field(tMap, "done", tData)->getBoolean();
 
-        // title
-        const auto& titleV = get_field(tMap, "title");
-        if (!titleV->isString()) throw MarshalError("task title must be a string");
-        t.title = titleV->getString();
-
-        // done
-        const auto& doneV = get_field(tMap, "done");
-        if (!doneV->isBoolean()) throw MarshalError("task done must be a boolean");
-        t.done = doneV->getBoolean();
-
-        // tags
-        const auto& tagsV = get_field(tMap, "tags");
-        if (!tagsV->isArray()) throw MarshalError("tags must be an array");
-        for (const auto& tag : tagsV->getArray()) {
-            if (!tag->isString()) throw MarshalError("tag must be a string");
-            t.tags.push_back(tag->getString());
+        const auto& tagsVar = get_required_field(tMap, "tags", tData);
+        if (!tagsVar->isArray()) invalid("tags must be an array", tData);
+        for (const auto& tagV : tagsVar->getArray()) {
+            t.tags.push_back(tagV->getString());
         }
 
-       // String or NULL
         auto it = tMap.find("completed");
         if (it != tMap.end() && it->second->isString()) {
             t.completed = it->second->getString();
@@ -121,4 +107,3 @@ TodoList unmarshal(json::Data& data) {
 
     return list;
 }
-
