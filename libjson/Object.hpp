@@ -16,14 +16,12 @@ namespace json
         std::map<std::string, Var>& getObject() override { return _val; }
         const std::map<std::string, Var>& getObject() const override { return _val; }
 
-        void print(std::ostream& os) const override
-        {
-            // I feel for some reason that this would not need to be iterated,
-            // but this was the only way I could think of.
+        void print(std::ostream& os) const override {
             os << "{";
-            for (auto it = _val.begin(); it != _val.end(); ++it) {
+            auto& m = getObject();
+            for (auto it = m.begin(); it != m.end(); ++it) {
                 os << json_string(it->first) << ":" << it->second;
-                if (std::next(it) != _val.end()) os << ",";
+                if (std::next(it) != m.end()) os << ",";
             }
             os << "}";
         }

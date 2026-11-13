@@ -18,12 +18,11 @@ namespace json
 
         void print(std::ostream& os) const override
         {
-            // I feel for some reason that this would not need to be iterated,
-            // but this was the only way I could think of.
             os << "[";
-            for (size_t i = 0; i < _val.size(); ++i)
-            {
-                os << _val[i] << (i == _val.size() - 1 ? "" : ",");
+            auto& v = getArray();
+            for (size_t i = 0; i < v.size(); ++i) {
+                os << v[i]; // This uses the Var operator<<
+                if (i < v.size() - 1) os << ",";
             }
             os << "]";
         }
